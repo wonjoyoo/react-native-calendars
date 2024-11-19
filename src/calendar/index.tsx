@@ -73,6 +73,14 @@ export interface CalendarProps extends CalendarHeaderProps, DayProps {
  * @example: https://github.com/wix/react-native-calendars/blob/master/example/src/screens/calendars.js
  * @gif: https://github.com/wix/react-native-calendars/blob/master/demo/assets/calendar.gif
  */
+
+function areEqual(prevProps, nextProps) {
+  return (
+    prevProps.current === nextProps.current &&
+    isEqual(prevProps.markedDates, nextProps.markedDates)
+  );
+}
+
 const Calendar = memo((props: CalendarProps & ContextProp) => {
   const {
     initialDate,
@@ -290,12 +298,7 @@ const renderWeek = useCallback(
   const gestureProps = enableSwipeMonths ? swipeProps : undefined;
 
 
-  function areEqual(prevProps, nextProps) {
-    return (
-      prevProps.current === nextProps.current &&
-      isEqual(prevProps.markedDates, nextProps.markedDates)
-    );
-  }
+
 
   
   return (

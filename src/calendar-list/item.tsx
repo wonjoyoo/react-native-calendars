@@ -1,31 +1,46 @@
 import XDate from 'xdate';
-import React, { useRef, useMemo, useCallback } from 'react';
-import { Text } from 'react-native';
-import { toMarkingFormat } from '../interface';
-import Calendar from '../calendar'; // Make sure to import your modified Calendar component
+import React, {useRef, useMemo, useCallback} from 'react';
+import {Text} from 'react-native';
+import {Theme} from '../types';
+import {toMarkingFormat} from '../interface';
+import {extractCalendarProps} from '../componentUpdater';
+import styleConstructor from './style';
+import Calendar, {CalendarProps} from '../calendar';
 
-const CalendarListItem = React.memo((props) => {  
+export type CalendarListItemProps = CalendarProps & {
+  item: any;
+  calendarWidth?: number;
+  calendarHeight?: number;
+  horizontal?: boolean;
+  theme?: Theme;
+  scrollToMonth?: (date: XDate) => void;
+  visible?: boolean;
+};
+
+const CalendarListItem = React.memo((props: CalendarListItemProps) => {  
   const {
     item,
-    markedDates,
-    calendarWidth,
-    calendarHeight,
-    horizontal,
+    theme,
     scrollToMonth,
+    horizontal,
+    calendarHeight,
+    calendarWidth,
     style: propsStyle,
     headerStyle,
     onPressArrowLeft,
     onPressArrowRight,
     visible,
-    testID,
+    markedDates,
   } = props;
 
+  const style = useRef(styleConstructor(theme));
+  
+  const calendarProps = extractCalendarProps(props);
   const dateString = toMarkingFormat(item);
 
-  // Filter markedDates to include only dates within the current month
   const monthMarkedDates = useMemo(() => {
     if (!markedDates) return {};
-    
+
     const dates = {};
     const monthStart = item.clone().setDate(1).clearTime();
     const monthEnd = monthStart.clone().addMonths(1).addDays(-1);
@@ -40,17 +55,23 @@ const CalendarListItem = React.memo((props) => {
     return dates;
   }, [markedDates, item]);
 
+
   const calendarStyle = useMemo(() => {
     return [
       {
         width: calendarWidth,
         minHeight: calendarHeight
       }, 
+      style.current.calendar,
       propsStyle
     ];
   }, [calendarWidth, calendarHeight, propsStyle]);
-
-  const _onPressArrowLeft = useCallback((method, month) => {
+  
+  const textStyle = useMemo(() => {
+    return [calendarStyle, style.current.placeholderText];
+  }, [calendarStyle]);
+  
+  const _onPressArrowLeft = useCallback((method: () => void, month?: XDate) => {
     const monthClone = month?.clone();
     if (monthClone) {
       if (onPressArrowLeft) {
@@ -58,7 +79,7 @@ const CalendarListItem = React.memo((props) => {
       } else if (scrollToMonth) {
         const currentMonth = monthClone.getMonth();
         monthClone.addMonths(-1);
-        // Ensure we get the previous month
+        // Make sure we actually get the previous month, not just 30 days before currentMonth.
         while (monthClone.getMonth() === currentMonth) {
           monthClone.setDate(monthClone.getDate() - 1);
         }
@@ -67,7 +88,7 @@ const CalendarListItem = React.memo((props) => {
     }
   }, [onPressArrowLeft, scrollToMonth]);
 
-  const _onPressArrowRight = useCallback((method, month) => {
+  const _onPressArrowRight = useCallback((method: () => void, month?: XDate) => {
     const monthClone = month?.clone();
     if (monthClone) {
       if (onPressArrowRight) {
@@ -81,25 +102,25 @@ const CalendarListItem = React.memo((props) => {
 
   if (!visible) {
     return (
-      <Text style={calendarStyle}>{dateString}</Text>
+      <Text style={textStyle}>{dateString}</Text>
     );
   }
 
   return (
     <Calendar
-      {...props}
+      hideArrows={true}
+      hideExtraDays={true}
+      {...calendarProps}
       current={dateString}
       style={calendarStyle}
       headerStyle={horizontal ? headerStyle : undefined}
-      hideArrows={true}
-      hideExtraDays={true}
       disableMonthChange
-      markedDates={monthMarkedDates} // Pass the filtered markedDates
+      markedDates={monthMarkedDates}
       onPressArrowLeft={horizontal ? _onPressArrowLeft : onPressArrowLeft}
       onPressArrowRight={horizontal ? _onPressArrowRight : onPressArrowRight}
-      testID={testID}
     />
   );
 });
 
 export default CalendarListItem;
+CalendarListItem.displayName = 'CalendarListItem';

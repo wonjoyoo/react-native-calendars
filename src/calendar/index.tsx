@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import XDate from 'xdate';
 import isEmpty from 'lodash/isEmpty';
-import React, {useRef, useState, useEffect, useCallback, useMemo} from 'react';
+import React, {useRef, useState, useEffect, useCallback, useMemo, memo} from 'react';
 import {View, ViewStyle, StyleProp} from 'react-native';
 // @ts-expect-error
 import GestureRecognizer, {swipeDirections} from 'react-native-swipe-gestures';
@@ -17,6 +17,9 @@ import styleConstructor from './style';
 import CalendarHeader, {CalendarHeaderProps} from './header';
 import Day, {DayProps} from './day/index';
 import BasicDay from './day/basic';
+import isEqual from 'lodash/isEqual'; // lodash의 isEqual 함수 사용
+
+
 
 export interface CalendarProps extends CalendarHeaderProps, DayProps {
   /** Specify theme properties to override specific styles for calendar parts */
@@ -70,7 +73,7 @@ export interface CalendarProps extends CalendarHeaderProps, DayProps {
  * @example: https://github.com/wix/react-native-calendars/blob/master/example/src/screens/calendars.js
  * @gif: https://github.com/wix/react-native-calendars/blob/master/demo/assets/calendar.gif
  */
-const Calendar = (props: CalendarProps & ContextProp) => {
+const Calendar = memo((props: CalendarProps & ContextProp) => {
   const {
     initialDate,
     current,
@@ -190,7 +193,7 @@ const Calendar = (props: CalendarProps & ContextProp) => {
     );
   };
 
-  const renderDay = (day: XDate, id: number) => {
+  const renderDay = useCallback((day: XDate, id: number) => {
     const dayProps = extractDayProps(props);
 
     if (!sameMonth(day, currentMonth) && hideExtraDays) {
@@ -213,9 +216,13 @@ const Calendar = (props: CalendarProps & ContextProp) => {
         />
       </View>
     );
-  };
+  },
+  [markedDates, onDayPress, onDayLongPress] // 필요한 의존성 추가
+);
 
-  const renderWeek = (days: XDate[], id: number) => {
+const renderWeek = useCallback(
+  (days: XDate[], id: number) => {
+
     const week: JSX.Element[] = [];
 
     days.forEach((day: XDate, id2: number) => {
@@ -231,9 +238,10 @@ const Calendar = (props: CalendarProps & ContextProp) => {
         {week}
       </View>
     );
-  };
+  },[renderDay] // renderDay에 의존
+  );
 
-  const renderMonth = () => {
+  const renderMonth = useMemo(() => {
     const shouldShowSixWeeks = showSixWeeks && !hideExtraDays;
     const days = page(currentMonth, firstDay, shouldShowSixWeeks);
     const weeks: JSX.Element[] = [];
@@ -243,7 +251,8 @@ const Calendar = (props: CalendarProps & ContextProp) => {
     }
 
     return <View style={style.current.monthView}>{weeks}</View>;
-  };
+  }, [currentMonth, firstDay, showSixWeeks, hideExtraDays, renderWeek]);
+
 
   const shouldDisplayIndicator = useMemo(() => {
     if (currentMonth) {
@@ -280,6 +289,15 @@ const Calendar = (props: CalendarProps & ContextProp) => {
   };
   const gestureProps = enableSwipeMonths ? swipeProps : undefined;
 
+
+  function areEqual(prevProps, nextProps) {
+    return (
+      prevProps.current === nextProps.current &&
+      isEqual(prevProps.markedDates, nextProps.markedDates)
+    );
+  }
+
+  
   return (
     <GestureComponent {...gestureProps}>
       <View
@@ -293,7 +311,8 @@ const Calendar = (props: CalendarProps & ContextProp) => {
       </View>
     </GestureComponent>
   );
-};
+}, areEqual);
+
 
 export default Calendar;
 Calendar.displayName = 'Calendar';

@@ -90,7 +90,7 @@ android {
     ndkVersion rootProject.ext.ndkVersion
 
     compileSdkVersion rootProject.ext.compileSdkVersion
-    namespace "com.calendarsexample"
+    namespace "com.calendarsexample2"
 
     defaultConfig {
         applicationId "com.calendarsexample"

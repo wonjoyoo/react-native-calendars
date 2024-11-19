@@ -310,7 +310,7 @@ const renderWeek = useCallback(
         importantForAccessibility={importantForAccessibility} // Android
       >
         {renderHeader()}
-        {renderMonth()}
+        {renderMonth}
       </View>
     </GestureComponent>
   );

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import XDate from 'xdate';
 
 import React, {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState} from 'react';
-import {FlatList, FlatListProps, View, ViewStyle} from 'react-native';
+import {ActivityIndicator, FlatList, FlatListProps, View, ViewStyle, StyleSheet, InteractionManager, Dimensions} from 'react-native';
 
 import {extractCalendarProps, extractHeaderProps} from '../componentUpdater';
 import {parseDate, toMarkingFormat, xdateToData} from '../interface';
@@ -21,6 +21,8 @@ const CALENDAR_WIDTH = constants.screenWidth;
 const CALENDAR_HEIGHT = 360;
 const PAST_SCROLL_RANGE = 50;
 const FUTURE_SCROLL_RANGE = 50;
+
+const { width, height } = Dimensions.get('window');
 
 export interface CalendarListProps extends CalendarProps, Omit<FlatListProps<any>, 'data' | 'renderItem'> {
   /** Max amount of months allowed to scroll to the past. Default = 50 */
@@ -62,6 +64,8 @@ const CalendarList = (props: CalendarListProps & ContextProp, ref: any) => {
       scrollToMonth(date);
     }
   }));
+
+  const [isReady, setIsReady] = useState(false); // FlatList 렌더링 완료 상태
 
   const {
     /** Calendar props */
@@ -117,6 +121,8 @@ const CalendarList = (props: CalendarListProps & ContextProp, ref: any) => {
   const range = useRef(horizontal ? 1 : 3);
   const initialDate = useRef(parseDate(current) || new XDate());
   const visibleMonth = useRef(currentMonth);
+  const renderedItems = useRef(new Set()); // Track rendered items
+  const [numItemsRendered, setNumItemsRendered] = useState(0); // Count of items rendered
 
   const items: XDate[] = useMemo(() => {
     const months: any[] = [];
@@ -124,8 +130,10 @@ const CalendarList = (props: CalendarListProps & ContextProp, ref: any) => {
       const rangeDate = initialDate.current?.clone().addMonths(i - pastScrollRange, true);
       months.push(rangeDate);
     }
+
     return months;
   }, [pastScrollRange, futureScrollRange]);
+
 
   const staticHeaderStyle = useMemo(() => {
     return [style.current.staticHeader, headerStyle];
@@ -233,10 +241,26 @@ const CalendarList = (props: CalendarListProps & ContextProp, ref: any) => {
     return false;
   }, [currentMonth]);
 
+    // Effect to check when all items have been rendered
+    useEffect(() => {
+      console.log("calender list====== useeffect", items.length, "num", numItemsRendered)
+      if (numItemsRendered === items.length) {
+        setIsReady(true);
+      }
+    }, [numItemsRendered, items.length]);
+  
+    // Callback when an item has been rendered
+    const onItemRendered = useCallback((itemKey) => {      
+        renderedItems.current.add(itemKey);
+        setNumItemsRendered(renderedItems.current.size);
+      
+    }, []);
+
   const renderItem = useCallback(({item}: {item: XDate}) => {
     const dateString = toMarkingFormat(item);
     const [year, month] = dateString.split('-');
     const testId = `${testID}.item_${year}-${month}`;
+    const itemKey = item.toString();
     return (
       <CalendarListItem
         {...calendarProps}
@@ -250,6 +274,7 @@ const CalendarList = (props: CalendarListProps & ContextProp, ref: any) => {
         calendarHeight={calendarHeight}
         scrollToMonth={scrollToMonth}
         visible={isDateInRange(item)}
+        onRender={() => onItemRendered(itemKey)}
       />
     );
   }, [horizontal, calendarStyle, calendarWidth, testID, getMarkedDatesForItem, isDateInRange, calendarProps]);
@@ -298,6 +323,7 @@ const CalendarList = (props: CalendarListProps & ContextProp, ref: any) => {
     },
   ]);
 
+
   return (
     <View style={style.current.flatListContainer} testID={testID}>
       <FlatList
@@ -332,9 +358,31 @@ const CalendarList = (props: CalendarListProps & ContextProp, ref: any) => {
         contentContainerStyle={contentContainerStyle}
       />
       {renderStaticHeader()}
+      {!isReady && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#00adf5" />
+        </View>
+      )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: width, // 전체 화면 너비
+    height: height, // 전체 화면 높이
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  flatList: {
+    flex: 1,
+  },
+});
+
 
 export default forwardRef(CalendarList);
 CalendarList.displayName = 'CalendarList';

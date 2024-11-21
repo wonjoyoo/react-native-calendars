@@ -1,5 +1,5 @@
 import XDate from 'xdate';
-import React, {useRef, useMemo, useCallback} from 'react';
+import React, {useRef, useMemo, useCallback, useEffect} from 'react';
 import {Text} from 'react-native';
 import {Theme} from '../types';
 import {toMarkingFormat} from '../interface';
@@ -15,6 +15,7 @@ export type CalendarListItemProps = CalendarProps & {
   theme?: Theme;
   scrollToMonth?: (date: XDate) => void;
   visible?: boolean;
+  onRender?: () => void; // onRender 함수 추가
 };
 
 const CalendarListItem = React.memo((props: CalendarListItemProps) => {  
@@ -31,6 +32,7 @@ const CalendarListItem = React.memo((props: CalendarListItemProps) => {
     onPressArrowRight,
     visible,
     markedDates,
+    onRender,
   } = props;
 
   const style = useRef(styleConstructor(theme));
@@ -100,11 +102,19 @@ const CalendarListItem = React.memo((props: CalendarListItemProps) => {
     }
   }, [onPressArrowRight, scrollToMonth]);
 
+  // 컴포넌트가 화면에 렌더링된 후 onRender 호출
+  useEffect(() => {
+    if (onRender) {
+      onRender();
+    }
+  }, [onRender]);
+
   if (!visible) {
     return (
       <Text style={textStyle}>{dateString}</Text>
     );
   }
+
 
   return (
     <Calendar
